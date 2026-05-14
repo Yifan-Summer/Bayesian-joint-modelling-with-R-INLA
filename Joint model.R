@@ -18,7 +18,6 @@ head(nb)
 nb2INLA("map.adj", nb)
 g <- inla.read.graph(filename = "map.adj")
 
-
 dataL <- dataL %>%
   group_by(ptid) %>% 
   mutate(Time = ifelse(C == 3, max(cd4cd8_confirm, na.rm = TRUE), Time)) %>%  
@@ -38,8 +37,6 @@ dataL$logcd4 <- log(dataL$cd4)
 dataL$CD4min <- max(dataL$logcd4) - dataL$logcd4
 CD4min_90th_percentile <- quantile(dataL$CD4min, 0.90)
 dataL <- dataL[dataL$CD4min > CD4min_90th_percentile, ]
-ptid_counts <- table(dataL$ptid)
-ptids_to_keep <- names(ptid_counts[ptid_counts >= 1])
 dataL <- dataL[dataL$ptid %in% ptids_to_keep, ]
 existing_ptids <- dataL$ptid
 dataS <- dataS[dataS$ptid %in% existing_ptids, ]
@@ -97,7 +94,6 @@ random.eff<-list(timeL =c(dataL$Time,dataL$Time,rep(NA,nS),rep(NA,nS)),
                  C1r1 = c(rep(NA, nL), rep(NA, nL), dataS$ptid, rep(NA, nS)),
                  C2r1 = c(rep(NA, nL), rep(NA, nL), rep(NA, nS), dataS$ptid))
 
-
 jointdata<-c(fixed.eff,random.eff)
 y.long <- c(dataL$CD4_9,rep(NA,nL),rep(NA, nS),rep(NA,nS))
 y.eta<-c(rep(NA,nL),rep(0,nL),rep(NA,nS),rep(NA,nS))
@@ -106,12 +102,9 @@ y.survC1 <- inla.surv(time = c(rep(NA, nL),rep(NA, nL),dataS$Time,rep(NA,nS)), e
 y.survC2 <- inla.surv(time = c(rep(NA, nL),rep(NA, nL),rep(NA,nS),dataS$Time), event = c(rep(NA, nL),rep(NA,nL),rep(NA,nS),dataE2$event))
 y.joint<-list(y.long,y.eta,y.survC1,y.survC2)
 jointdata$Y=y.joint
-jointdata$jie1 <- factor(jointdata$jie1)
-jointdata$jie2 <- factor(jointdata$jie2)
-
 
 formula.model=Y~sex1+sex2+sexL+marriage1+marriage2+marriageL+
-  route1+route2+routeL+age_confirm1+age_confirm2+age_confirmL+confirm_art1+confirm_art2+confirm_artL + tL + jie1 + jie2 +
+  route1+route2+routeL+age_confirm1+age_confirm2+age_confirmL+confirm_art1+confirm_art2+confirm_artL+tL+jie1+jie2+
   f(inla.group(timeL,n=50),model="rw2", scale.model = TRUE,
    hyper = list(prec = list(prior="pc.prec", param=c(1, 0.01))))+
   f(idareaS1, model = "bym2", graph = g, hyper = list
@@ -138,7 +131,6 @@ Jointmodel <- inla(formula.model, family = c('gp','gaussian', 'weibullsurv', 'we
 )
 
 summary(Jointmodel)
-
 
 #Gaussian
 dataL$logcd4 <- log(dataL$cd4)
@@ -195,7 +187,6 @@ random.eff<-list(timeL =c(dataL$Time,dataL$Time,rep(NA,nS),rep(NA,nS)),
                  C1r1 = c(rep(NA, nL), rep(NA, nL), dataS$ptid, rep(NA, nS)),
                  C2r1 = c(rep(NA, nL), rep(NA, nL), rep(NA, nS), dataS$ptid))
 
-
 jointdata<-c(fixed.eff,random.eff)
 y.long <- c(dataL$CD4_9,rep(NA,nL),rep(NA, nS),rep(NA,nS))
 y.eta<-c(rep(NA,nL),rep(0,nL),rep(NA,nS),rep(NA,nS))
@@ -204,12 +195,9 @@ y.survC1 <- inla.surv(time = c(rep(NA, nL),rep(NA, nL),dataS$Time,rep(NA,nS)), e
 y.survC2 <- inla.surv(time = c(rep(NA, nL),rep(NA, nL),rep(NA,nS),dataS$Time), event = c(rep(NA, nL),rep(NA,nL),rep(NA,nS),dataE2$event))
 y.joint<-list(y.long,y.eta,y.survC1,y.survC2)
 jointdata$Y=y.joint
-jointdata$jie1 <- factor(jointdata$jie1)
-jointdata$jie2 <- factor(jointdata$jie2)
 
-
-formula.model=Y~sex1+sex2+sexL+marriage1+marriage2+marriageL+
-  route1+route2+routeL+age_confirm1+age_confirm2+age_confirmL+confirm_art1+confirm_art2+confirm_artL + tL + jie1 + jie2 +
+formula.model1=Y~sex1+sex2+sexL+marriage1+marriage2+marriageL+
+  route1+route2+routeL+age_confirm1+age_confirm2+age_confirmL+confirm_art1+confirm_art2+confirm_artL+tL+jie1+jie2+
   f(inla.group(timeL,n=50),model="rw2", scale.model = TRUE,
     hyper = list(prec = list(prior="pc.prec", param=c(1, 0.01))))+
   f(idareaS1, model = "bym2", graph = g, hyper = list
@@ -223,8 +211,7 @@ formula.model=Y~sex1+sex2+sexL+marriage1+marriage2+marriageL+
   f(beta1, copy="linpredL", hyper = list(beta = list(fixed = FALSE)))+
   f(beta2, copy="linpredL", hyper = list(beta = list(fixed = FALSE)))
 
-
-Jointmodel1 <- inla(formula.model, family = c('gaussian','gaussian', 'weibullsurv', 'weibullsurv'),
+Jointmodel1 <- inla(formula.model1, family = c('gaussian','gaussian', 'weibullsurv', 'weibullsurv'),
                     control.family = list(
                       list(),
                       list(),
@@ -239,66 +226,3 @@ Jointmodel1 <- inla(formula.model, family = c('gaussian','gaussian', 'weibullsur
 )
 
 summary(Jointmodel1)
-
-
-#Sensitivity analysis
-formula.model2 = Y ~ sex1 + sex2 + sexL + marriage1 + marriage2 + marriageL +
-  route1 + route2 + routeL + age_confirm1 + age_confirm2 + age_confirmL +
-  confirm_art1 + confirm_art2 + confirm_artL + tL + jie1 + jie2 +
-  f(inla.group(timeL, n = 50), model = "rw2", scale.model = TRUE,
-    hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01)))) +
-  f(idareaS1, model = "bym2", graph = g,
-    hyper = list(
-      prec = list(prior = "pc.prec", param = c(1, 0.01)),   # 改成更宽松的先验
-      phi = list(prior = "pc", param = c(0.5, 0.5))        # 改成更均匀的先验
-    )) +
-  f(idareaS2, copy = "idareaS1",
-    hyper = list(beta = list(fixed = FALSE))) +
-  f(linpredL, linpredL2, model = "iid",
-    hyper = list(prec = list(initial = -6, fixed = TRUE))) +
-  f(Lr1, model = "iid") +
-  f(C1r1, model = "iid") +
-  f(C2r1, model = "iid") +
-  f(beta1, copy = "linpredL", hyper = list(beta = list(fixed = FALSE))) +
-  f(beta2, copy = "linpredL", hyper = list(beta = list(fixed = FALSE)))
-
-Jointmodel2 <- inla(formula.model2, family = c('gp','gaussian', 'weibullsurv', 'weibullsurv'),
-                   control.family = list(
-                     list(control.link = list(model = "quantile", quantile = 0.6)),
-                     list(),
-                     list(),
-                     list()
-                   ),
-                   control.compute = list(dic = TRUE, waic = TRUE),
-                   data = jointdata, verbose = TRUE
-)
-
-summary(Jointmodel2)
-
-
-formula.model3 = Y ~ sex1 + sex2 + sexL + marriage1 + marriage2 + marriageL +
-  route1 + route2 + routeL + age_confirm1 + age_confirm2 + age_confirmL + confirm_art1 + confirm_art2 + confirm_artL + 
-  tL + jie1 + jie2 +
-  f(inla.group(timeL, n = 50), model = "rw2", scale.model = TRUE,
-    hyper = list(prec = list(prior = "pc.prec", param = c(0.9, 0.01)))) +  # RW2 prior changed here
-  f(idareaS1, model = "bym2", graph = g,
-    hyper = list(
-      prec = list(prior = "pc.prec", param = c(0.5 / 0.31, 0.01)),
-      phi = list(prior = "pc", param = c(0.1, 4 / 5))
-    )) +
-  f(idareaS2, copy = "idareaS1", hyper = list(beta = list(fixed = FALSE))) +
-  f(linpredL, linpredL2, model = "iid", hyper = list(prec = list(initial = -6, fixed = TRUE))) +
-  f(Lr1, model = "iid") +
-  f(C1r1, model = "iid") +
-  f(C2r1, model = "iid") +
-  f(beta1, copy = "linpredL", hyper = list(beta = list(fixed = FALSE))) +
-  f(beta2, copy = "linpredL", hyper = list(beta = list(fixed = FALSE)))
-
-Jointmodel3 <- inla(formula.model3, family = c('gp','gaussian', 'weibullsurv', 'weibullsurv'),
-                   control.family = list(
-                     list(control.link = list(model = "quantile", quantile = 0.6)),
-                     list(), list(), list()),
-                   control.compute = list(dic = TRUE, waic = TRUE),
-                   data = jointdata, verbose = TRUE)
-
-summary(Jointmodel3)
